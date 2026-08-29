@@ -1,0 +1,81 @@
+// Generator
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Datasource
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users ──────────────────────────────────────────────────────────────────
+model User {
+  id             String   @id @default(uuid())
+  googleId       String   @unique
+  email          String   @unique
+  name           String
+  avatar         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  emailJobs      EmailJob[]
+  slackConnection SlackConnection?
+
+  @@map("users")
+}
+
+// ─── Slack Connection (per user) ────────────────────────────────────────────
+model SlackConnection {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  accessToken  String
+  teamId       String
+  teamName     String
+  webhookUrl   String?
+  channelId    String?
+  channelName  String?
+  connectedAt  DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("slack_connections")
+}
+
+// ─── Email Jobs ─────────────────────────────────────────────────────────────
+model EmailJob {
+  id              String       @id @default(uuid())
+  userId          String
+  fromEmail       String
+  toEmail         String
+  subject         String
+  body            String       @db.Text
+  scheduledAt     DateTime
+  status          EmailStatus  @default(SCHEDULED)
+  bullJobId       String?      @unique   // BullMQ job ID — same as our DB id for idempotency
+  sentAt          DateTime?
+  errorMessage    String?
+  previewUrl      String?      // Ethereal email preview URL
+  delayBetweenMs  Int          @default(2000)   // delay between sends in ms
+  hourlyLimit     Int          @default(50)
+  batchId         String?      // groups emails from same compose action
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([status, scheduledAt])
+  @@index([fromEmail, status])
+  @@index([batchId])
+  @@map("email_jobs")
+}
+
+enum EmailStatus {
+  SCHEDULED
+  PROCESSING
+  SENT
+  FAILED
+  CANCELLED
+}
