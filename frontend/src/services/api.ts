@@ -1,6 +1,6 @@
 import type { User, ScheduledResponse, SentResponse, SlackStatus, EmailJob } from '../types';
 
-const API_BASE_URL = 'http://localhost:4000';
+const API_BASE_URL = 'https://onb-outbox.onrender.com';
 
 export function getAuthToken(): string | null {
   return localStorage.getItem('token');

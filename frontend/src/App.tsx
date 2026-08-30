@@ -10,10 +10,15 @@ import { api, getAuthToken, clearAuthToken } from './services/api';
 import type { User, EmailJob, SlackStatus } from './types';
 
 export function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!getAuthToken());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+    !!getAuthToken()
+  );
+
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'scheduled' | 'sent'>('scheduled');
-  const [viewMode, setViewMode] = useState<'list' | 'compose' | 'detail'>('list');
+  const [activeTab, setActiveTab] =
+    useState<'scheduled' | 'sent'>('scheduled');
+  const [viewMode, setViewMode] =
+    useState<'list' | 'compose' | 'detail'>('list');
 
   const [scheduledJobs, setScheduledJobs] = useState<EmailJob[]>([]);
   const [sentJobs, setSentJobs] = useState<EmailJob[]>([]);
@@ -23,37 +28,31 @@ export function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [slackStatus, setSlackStatus] = useState<SlackStatus | null>(null);
 
-  // Check URL params for OAuth code/slack flags
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('token')) {
-      setIsAuthenticated(true);
-    }
-  }, []);
-
+  // Load current authenticated user
   const loadUserData = useCallback(async () => {
-    if (!getAuthToken()) return;
+    const token = getAuthToken();
+
+    if (!token) return;
+
     try {
       const data = await api.getCurrentUser();
       setUser(data.user);
-    } catch {
-      // Token was expired or mock — fetch a fresh valid signed JWT from backend /auth/demo
-      try {
-        const res = await fetch('http://localhost:4000/auth/demo', { method: 'POST' });
-        const data = await res.json();
-        if (data.token) {
-          localStorage.setItem('token', data.token);
-          setUser(data.user);
-        }
-      } catch (e) {
-        console.error('Failed to auto-refresh token:', e);
-      }
+    } catch (err) {
+      console.error('Failed to load current user:', err);
+
+      // Invalid/expired token
+      clearAuthToken();
+      setIsAuthenticated(false);
+      setUser(null);
     }
   }, []);
 
+  // Load email jobs
   const loadJobs = useCallback(async () => {
     if (!getAuthToken()) return;
+
     setLoading(true);
+
     try {
       const [scheduledRes, sentRes, slackRes] = await Promise.all([
         api.getScheduled(),
@@ -71,19 +70,22 @@ export function App() {
     }
   }, []);
 
+  // Load user + jobs after authentication
   useEffect(() => {
-    if (isAuthenticated) {
-      loadUserData();
-      loadJobs();
+    if (!isAuthenticated) return;
 
-      // Poll every 5 seconds to show live updates as scheduled jobs send
-      const interval = setInterval(loadJobs, 5000);
-      return () => clearInterval(interval);
-    }
+    loadUserData();
+    loadJobs();
+
+    const interval = setInterval(loadJobs, 5000);
+
+    return () => clearInterval(interval);
   }, [isAuthenticated, loadUserData, loadJobs]);
 
+  // Search emails
   const handleSearchChange = async (q: string) => {
     setSearchQuery(q);
+
     if (!q.trim()) {
       loadJobs();
       return;
@@ -92,15 +94,37 @@ export function App() {
     try {
       const searchRes = await api.searchEmails(q);
       const hits = searchRes.hits || [];
-      setScheduledJobs(hits.filter((h: any) => h.status === 'SCHEDULED' || h.status === 'PROCESSING'));
-      setSentJobs(hits.filter((h: any) => h.status === 'SENT' || h.status === 'FAILED'));
+
+      setScheduledJobs(
+        hits.filter(
+          (h: any) =>
+            h.status === 'SCHEDULED' ||
+            h.status === 'PROCESSING'
+        )
+      );
+
+      setSentJobs(
+        hits.filter(
+          (h: any) =>
+            h.status === 'SENT' ||
+            h.status === 'FAILED'
+        )
+      );
     } catch (err) {
       console.error('Search failed:', err);
     }
   };
 
+  // Cancel scheduled email
   const handleCancelJob = async (id: string) => {
-    if (!window.confirm('Are you sure you want to cancel this scheduled email?')) return;
+    if (
+      !window.confirm(
+        'Are you sure you want to cancel this scheduled email?'
+      )
+    ) {
+      return;
+    }
+
     try {
       await api.cancelEmail(id);
       loadJobs();
@@ -109,25 +133,37 @@ export function App() {
     }
   };
 
+  // Logout
   const handleLogout = () => {
     clearAuthToken();
     setIsAuthenticated(false);
     setUser(null);
   };
 
-  // Route: OAuth callback page
+  // OAuth callback route
   if (window.location.pathname === '/auth/callback') {
-    return <AuthCallback onSuccess={() => { setIsAuthenticated(true); window.location.href = '/'; }} />;
+    return (
+      <AuthCallback
+        onSuccess={() => {
+          setIsAuthenticated(true);
+          window.history.replaceState({}, '', '/');
+          window.location.reload();
+        }}
+      />
+    );
   }
 
-  // Route: Login screen
+  // Login screen
   if (!isAuthenticated) {
-    return <Login onLoginSuccess={() => setIsAuthenticated(true)} />;
+    return (
+      <Login
+        onLoginSuccess={() => setIsAuthenticated(true)}
+      />
+    );
   }
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans">
-      {/* Sidebar Navigation */}
       <Sidebar
         user={user}
         activeTab={activeTab}
@@ -142,7 +178,6 @@ export function App() {
         onLogout={handleLogout}
       />
 
-      {/* Main View Area */}
       <main className="flex-1 flex flex-col min-w-0">
         {viewMode === 'compose' ? (
           <ComposePage
