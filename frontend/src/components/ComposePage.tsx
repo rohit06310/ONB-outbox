@@ -21,6 +21,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import type { User, ComposeFormState } from '../types';
+import { api } from '../services/api';
 
 interface ComposePageProps {
   user: User | null;
@@ -129,28 +130,15 @@ export const ComposePage: React.FC<ComposePageProps> = ({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('http://localhost:4000/api/emails/schedule', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          fromEmail: form.fromEmail,
-          recipients: allRecipients,
-          subject: form.subject,
-          body: form.body || '<p>No content</p>',
-          scheduledAt: new Date(form.scheduledAt).toISOString(),
-          delayBetweenMs: form.delayBetweenSec * 1000,
-          hourlyLimit: form.hourlyLimit,
-        }),
+      await api.scheduleEmails({
+        fromEmail: form.fromEmail,
+        recipients: allRecipients,
+        subject: form.subject,
+        body: form.body || '<p>No content</p>',
+        scheduledAt: new Date(form.scheduledAt).toISOString(),
+        delayBetweenMs: form.delayBetweenSec * 1000,
+        hourlyLimit: form.hourlyLimit,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to schedule emails');
-      }
 
       onScheduleSuccess();
     } catch (err: any) {

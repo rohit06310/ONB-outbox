@@ -1,6 +1,7 @@
 import React from 'react';
 import { Clock, Send, ChevronDown, Plus, LogOut, MessageSquare } from 'lucide-react';
 import type { User, SlackStatus } from '../types';
+import { API_BASE_URL } from '../services/api';
 
 interface SidebarProps {
   user: User | null;
@@ -25,7 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const handleConnectSlack = () => {
     // Initiate Slack OAuth flow
-    window.location.href = 'http://localhost:4000/api/slack/connect';
+    window.location.href = `${API_BASE_URL}/api/slack/connect`;
   };
 
   return (
