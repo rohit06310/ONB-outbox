@@ -28,9 +28,8 @@ const envSchema = z.object({
   GOOGLE_CALLBACK_URL: z.string().default('http://localhost:4000/auth/google/callback'),
 
   // Slack OAuth
-  SLACK_CLIENT_ID: z.string().min(1, 'SLACK_CLIENT_ID is required'),
-  SLACK_CLIENT_SECRET: z.string().min(1, 'SLACK_CLIENT_SECRET is required'),
-  SLACK_REDIRECT_URI: z.string().default('http://localhost:4000/api/slack/callback'),
+  SLACK_CLIENT_ID: z.string().optional(),
+  SLACK_CLIENT_SECRET: z.string().optional(),
 
   // Elasticsearch
   ELASTICSEARCH_URL: z.string().default('http://localhost:9200'),
