@@ -33,7 +33,7 @@ const envSchema = z.object({
   SLACK_REDIRECT_URI: z.string().default('http://localhost:4000/api/slack/callback'),
 
   // Elasticsearch
-  ELASTICSEARCH_URL: z.string().default('http://localhost:9200'),
+  ELASTICSEARCH_URL: z.string().optional(),
   ELASTICSEARCH_INDEX: z.string().default('email_jobs'),
 
   // Worker
